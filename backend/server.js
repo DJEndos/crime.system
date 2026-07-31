@@ -29,10 +29,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // ---- Serve frontend (Presentation Layer) ----
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(__dirname, 'public', 'pages', 'login.html'));
+  res.sendFile(path.join(__dirname, '..', 'public', 'pages', 'login.html'));
 });
 
 // ---- Global error handler ----
