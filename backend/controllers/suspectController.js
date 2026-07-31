@@ -1,31 +1,30 @@
-const pool = require('../config/db');
+const Suspect = require('../models/Suspect');
+const Crime = require('../models/Crime');
 const { logAction } = require('../middleware/auditLogger');
 
 // GET /api/suspects
 async function getAllSuspects(req, res) {
   try {
     const { status, gender, page = 1, limit = 20 } = req.query;
-    const conditions = [];
-    const params = [];
-    if (status) { conditions.push('s.status = ?'); params.push(status); }
-    if (gender) { conditions.push('s.gender = ?'); params.push(gender); }
+    const filter = {};
+    if (status) filter.status = status;
+    if (gender) filter.gender = gender;
 
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (Number(page) - 1) * Number(limit);
+    const skip = (Number(page) - 1) * Number(limit);
 
-    const [rows] = await pool.query(
-      `SELECT s.*, c.case_number, c.crime_type
-       FROM suspects s
-       JOIN crimes c ON s.crime_id = c.id
-       ${whereClause}
-       ORDER BY s.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, Number(limit), offset]
-    );
+    const [suspectsRaw, total] = await Promise.all([
+      Suspect.find(filter).populate('crime_id', 'case_number crime_type').sort('-created_at').skip(skip).limit(Number(limit)).lean(),
+      Suspect.countDocuments(filter)
+    ]);
 
-    const [countRows] = await pool.query(`SELECT COUNT(*) AS total FROM suspects s ${whereClause}`, params);
+    const suspects = suspectsRaw.map(s => ({
+      ...s,
+      id: s._id,
+      case_number: s.crime_id ? s.crime_id.case_number : null,
+      crime_type: s.crime_id ? s.crime_id.crime_type : null
+    }));
 
-    res.json({ success: true, suspects: rows, total: countRows[0].total });
+    res.json({ success: true, suspects, total });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error fetching suspects.' });
@@ -35,12 +34,9 @@ async function getAllSuspects(req, res) {
 // GET /api/suspects/:id
 async function getSuspectById(req, res) {
   try {
-    const [rows] = await pool.query(
-      `SELECT s.*, c.case_number, c.crime_type FROM suspects s JOIN crimes c ON s.crime_id = c.id WHERE s.id = ?`,
-      [req.params.id]
-    );
-    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Suspect not found.' });
-    res.json({ success: true, suspect: rows[0] });
+    const s = await Suspect.findById(req.params.id).populate('crime_id', 'case_number crime_type').lean();
+    if (!s) return res.status(404).json({ success: false, message: 'Suspect not found.' });
+    res.json({ success: true, suspect: { ...s, id: s._id, case_number: s.crime_id?.case_number, crime_type: s.crime_id?.crime_type } });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error.' });
   }
@@ -53,17 +49,16 @@ async function createSuspect(req, res) {
     return res.status(400).json({ success: false, message: 'crime_id and full_name are required.' });
   }
   try {
-    const [crimeCheck] = await pool.query('SELECT id FROM crimes WHERE id = ?', [crime_id]);
-    if (crimeCheck.length === 0) return res.status(404).json({ success: false, message: 'Associated crime record not found.' });
+    const crimeExists = await Crime.exists({ _id: crime_id });
+    if (!crimeExists) return res.status(404).json({ success: false, message: 'Associated crime record not found.' });
 
-    const [result] = await pool.query(
-      `INSERT INTO suspects (crime_id, full_name, alias, gender, age, address, phone, national_id, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [crime_id, full_name, alias || null, gender || 'unknown', age || null, address || null,
-       phone || null, national_id || null, status || 'at_large', notes || null]
-    );
-    await logAction({ userId: req.user.id, action: 'CREATE_SUSPECT', entityType: 'suspect', entityId: result.insertId, ip: req.ip });
-    res.status(201).json({ success: true, message: 'Suspect record added.', suspectId: result.insertId });
+    const suspect = await Suspect.create({
+      crime_id, full_name, alias: alias || null, gender: gender || 'unknown', age: age || null,
+      address: address || null, phone: phone || null, national_id: national_id || null,
+      status: status || 'at_large', notes: notes || null
+    });
+    await logAction({ userId: req.user.id, action: 'CREATE_SUSPECT', entityType: 'suspect', entityId: suspect._id, ip: req.ip });
+    res.status(201).json({ success: true, message: 'Suspect record added.', suspectId: suspect._id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error creating suspect record.' });
@@ -73,17 +68,13 @@ async function createSuspect(req, res) {
 // PUT /api/suspects/:id
 async function updateSuspect(req, res) {
   const fields = ['full_name', 'alias', 'gender', 'age', 'address', 'phone', 'national_id', 'status', 'notes'];
-  const updates = [];
-  const params = [];
-  fields.forEach(f => {
-    if (req.body[f] !== undefined) { updates.push(`${f} = ?`); params.push(req.body[f]); }
-  });
-  if (updates.length === 0) return res.status(400).json({ success: false, message: 'No fields provided to update.' });
-  params.push(req.params.id);
+  const updates = {};
+  fields.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+  if (Object.keys(updates).length === 0) return res.status(400).json({ success: false, message: 'No fields provided to update.' });
 
   try {
-    const [result] = await pool.query(`UPDATE suspects SET ${updates.join(', ')} WHERE id = ?`, params);
-    if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Suspect not found.' });
+    const suspect = await Suspect.findByIdAndUpdate(req.params.id, updates, { new: true });
+    if (!suspect) return res.status(404).json({ success: false, message: 'Suspect not found.' });
     await logAction({ userId: req.user.id, action: 'UPDATE_SUSPECT', entityType: 'suspect', entityId: req.params.id, ip: req.ip });
     res.json({ success: true, message: 'Suspect record updated.' });
   } catch (err) {
@@ -95,8 +86,8 @@ async function updateSuspect(req, res) {
 // DELETE /api/suspects/:id
 async function deleteSuspect(req, res) {
   try {
-    const [result] = await pool.query('DELETE FROM suspects WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Suspect not found.' });
+    const suspect = await Suspect.findByIdAndDelete(req.params.id);
+    if (!suspect) return res.status(404).json({ success: false, message: 'Suspect not found.' });
     await logAction({ userId: req.user.id, action: 'DELETE_SUSPECT', entityType: 'suspect', entityId: req.params.id, ip: req.ip });
     res.json({ success: true, message: 'Suspect record deleted.' });
   } catch (err) {

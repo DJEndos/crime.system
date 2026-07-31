@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/authRoutes');
 const crimeRoutes = require('./routes/crimeRoutes');
@@ -11,6 +12,8 @@ const searchRoutes = require('./routes/searchRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
+
+connectDB();
 
 app.use(cors());
 app.use(express.json());
@@ -29,10 +32,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // ---- Serve frontend (Presentation Layer) ----
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(__dirname, '..', 'public', 'pages', 'login.html'));
+  res.sendFile(path.join(__dirname, 'public', 'pages', 'login.html'));
 });
 
 // ---- Global error handler ----

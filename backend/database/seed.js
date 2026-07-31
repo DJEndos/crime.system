@@ -1,31 +1,39 @@
 /**
  * Seeds the default administrator account.
- * Run AFTER importing schema.sql:
+ * Run AFTER your MongoDB Atlas connection is set up:
  *    npm run seed
  */
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const pool = require('../config/db');
+const mongoose = require('mongoose');
+const User = require('../models/User');
 
 async function seed() {
-  const username = process.env.SEED_ADMIN_USERNAME || 'admin';
+  const username = (process.env.SEED_ADMIN_USERNAME || 'admin').toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD || 'Admin@123';
   const fullName = process.env.SEED_ADMIN_FULLNAME || 'System Administrator';
   const badge = process.env.SEED_ADMIN_BADGE || 'ADM-001';
 
   try {
-    const [existing] = await pool.query('SELECT id FROM users WHERE username = ?', [username]);
-    if (existing.length > 0) {
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log('✅ Connected to MongoDB for seeding.');
+
+    const existing = await User.findOne({ username });
+    if (existing) {
       console.log(`ℹ️  Admin user "${username}" already exists. Skipping.`);
       process.exit(0);
     }
 
     const hash = await bcrypt.hash(password, 10);
-    await pool.query(
-      `INSERT INTO users (badge_number, full_name, username, password_hash, role, officer_rank, station)
-       VALUES (?, ?, ?, ?, 'admin', 'Superintendent', 'Ikot Udota Division, Eket')`,
-      [badge, fullName, username, hash]
-    );
+    await User.create({
+      badge_number: badge,
+      full_name: fullName,
+      username,
+      password_hash: hash,
+      role: 'admin',
+      officer_rank: 'Superintendent',
+      station: 'Ikot Udota Division, Eket'
+    });
 
     console.log('✅ Default admin account created:');
     console.log(`   Username: ${username}`);
