@@ -115,4 +115,16 @@ async function listOfficers(req, res) {
   }
 }
 
+async function listOfficers(req, res) {
+  try {
+    const officers = await User.find({ is_active: true })
+      .select('full_name badge_number role officer_rank station')
+      .sort('full_name')
+      .lean();
+    const mapped = officers.map(o => ({ ...o, id: o._id }));
+    res.json({ success: true, officers: mapped });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+}
 module.exports = { login, me, register, changePassword, listOfficers };
