@@ -1,0 +1,209 @@
+/* =====================================================================
+   CRIME TRACKING SYSTEM — DESIGN TOKENS
+   Palette:
+     --navy       #0B2545  (primary / sidebar / headers)
+     --navy-deep  #071A33  (sidebar gradient end)
+     --forest     #0F5132  (Nigeria-green accent, success/active states)
+     --gold       #B8901F  (badge/seal accent, warnings, emphasis)
+     --paper      #F6F5F1  (page background — gazette paper tone)
+     --ink        #1F2328  (body text)
+     --line       #DCD8CC  (hairline rules)
+   Type:
+     Display : 'Libre Baskerville' (serif, gazette/case-file authority)
+     Body    : 'IBM Plex Sans' (clean, legible for dense tables)
+     Mono    : 'IBM Plex Mono' (case numbers, badge numbers, IDs)
+   Signature element: the circular "case stamp" badge used for status chips
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root {
+  --navy: #0B2545;
+  --navy-deep: #071A33;
+  --forest: #0F5132;
+  --gold: #B8901F;
+  --paper: #F6F5F1;
+  --ink: #1F2328;
+  --line: #DCD8CC;
+  --danger: #8C2F2F;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', sans-serif;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, .display-font {
+  font-family: 'Libre Baskerville', serif;
+  letter-spacing: 0.2px;
+}
+
+.mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* ---------- Letterhead / Auth pages ---------- */
+.letterhead-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(184,144,31,0.12), transparent 55%),
+    linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+}
+
+.seal {
+  width: 78px; height: 78px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold);
+  font-family: 'Libre Baskerville', serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  margin: 0 auto 1rem;
+  background: rgba(184,144,31,0.08);
+}
+
+.auth-card {
+  background: #fff;
+  border-radius: 6px;
+  border-top: 5px solid var(--gold);
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.45);
+  max-width: 420px;
+  width: 100%;
+  padding: 2.25rem 2rem;
+}
+
+.auth-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.72rem;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* ---------- App shell ---------- */
+.app-shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+  color: #E8ECF3;
+  padding: 1.5rem 1rem;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+
+.sidebar .brand {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.05rem;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sidebar .brand small { color: var(--gold); display:block; letter-spacing:1px; font-size: 0.65rem; text-transform: uppercase; }
+
+.sidebar a.nav-link {
+  color: #C7D0E0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 5px;
+  font-size: 0.92rem;
+  margin-bottom: 2px;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.sidebar a.nav-link:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.sidebar a.nav-link.active { background: var(--gold); color: var(--navy-deep); font-weight: 600; }
+
+.main-content { flex: 1; min-width: 0; }
+
+.topbar {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 0.9rem 1.75rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.page-body { padding: 1.75rem; }
+
+/* ---------- Cards / stat tiles ---------- */
+.stat-tile {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--navy);
+  border-radius: 6px;
+  padding: 1.1rem 1.25rem;
+}
+.stat-tile .num { font-family: 'Libre Baskerville', serif; font-size: 2rem; color: var(--navy); }
+.stat-tile.gold { border-left-color: var(--gold); }
+.stat-tile.forest { border-left-color: var(--forest); }
+.stat-tile.danger { border-left-color: var(--danger); }
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.panel-header {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  font-family: 'Libre Baskerville', serif;
+  display: flex; align-items:center; justify-content: space-between;
+}
+
+/* ---------- Case Stamp (signature element) ---------- */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  padding: 0.15rem 0.55rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transform: rotate(-1.5deg);
+}
+.stamp::before { content: '●'; font-size: 0.55rem; }
+.stamp.open { color: var(--danger); }
+.stamp.under_investigation, .stamp.pending { color: var(--gold); }
+.stamp.closed, .stamp.guilty { color: var(--forest); }
+.stamp.in_court { color: var(--navy); }
+.stamp.at_large { color: var(--danger); }
+.stamp.arrested { color: var(--gold); }
+.stamp.convicted { color: var(--forest); }
+.stamp.released, .stamp.not_guilty, .stamp.dismissed { color: #555; }
+
+/* ---------- Tables ---------- */
+table.records { width: 100%; border-collapse: collapse; }
+table.records th {
+  text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px;
+  color: #6b7280; border-bottom: 1px solid var(--line); padding: 0.6rem 1rem; font-weight: 600;
+}
+table.records td { padding: 0.7rem 1rem; border-bottom: 1px solid #EFEDE5; font-size: 0.9rem; vertical-align: middle; }
+table.records tbody tr:hover { background: #FBFAF6; cursor: pointer; }
+
+.btn-navy { background: var(--navy); border-color: var(--navy); color: #fff; }
+.btn-navy:hover { background: var(--navy-deep); border-color: var(--navy-deep); color: #fff; }
+.btn-gold { background: var(--gold); border-color: var(--gold); color: #fff; }
+.btn-gold:hover { background: #9c7a19; border-color: #9c7a19; color: #fff; }
+
+.form-label { font-size: 0.82rem; font-weight: 600; color: #444; }
+
+.empty-state { text-align: center; padding: 3rem 1rem; color: #8a8a8a; }
+.empty-state .icon { font-size: 2.4rem; margin-bottom: 0.5rem; }
+
+@media (max-width: 900px) {
+  .sidebar { position: fixed; z-index: 1030; transform: translateX(-100%); transition: transform 0.2s ease; }
+  .sidebar.open { transform: translateX(0); }
+  .app-shell { display: block; }
+}
+
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

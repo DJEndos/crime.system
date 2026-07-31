@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Crime Tracking System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/style.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-root"></div>
+  <div class="main-content">
+    <div id="topbar-root"></div>
+    <div class="page-body">
+
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="stat-tile"><div class="text-muted small">Total Crime Records</div><div class="num" id="statTotal">—</div></div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-tile danger"><div class="text-muted small">Open / Under Investigation</div><div class="num" id="statOpen">—</div></div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-tile gold"><div class="text-muted small">Suspects At Large</div><div class="num" id="statAtLarge">—</div></div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-tile forest"><div class="text-muted small">Cases Closed</div><div class="num" id="statClosed">—</div></div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-lg-7">
+          <div class="panel h-100">
+            <div class="panel-header">Crime Reports — Last 6 Months</div>
+            <div class="p-3"><canvas id="monthlyChart" height="140"></canvas></div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="panel h-100">
+            <div class="panel-header">Cases by Status</div>
+            <div class="p-3"><canvas id="statusChart" height="140"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="panel">
+            <div class="panel-header">Top Crime Types</div>
+            <div class="p-3"><canvas id="typeChart" height="130"></canvas></div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="panel">
+            <div class="panel-header">
+              Recently Registered
+              <a href="/pages/crimes.html" class="small">View all →</a>
+            </div>
+            <table class="records mb-0" id="recentTable">
+              <thead><tr><th>Case #</th><th>Type</th><th>Status</th></tr></thead>
+              <tbody><tr><td colspan="3" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (requireAuth()) {
+  renderSidebar('/pages/dashboard.html');
+  renderTopbar('Dashboard');
+
+  (async () => {
+    try {
+      const data = await apiRequest('/reports/dashboard');
+
+      document.getElementById('statTotal').textContent = data.totalCrimes;
+      document.getElementById('statOpen').textContent = data.openCases;
+      document.getElementById('statAtLarge').textContent = data.suspectsAtLarge;
+      const closed = (data.byStatus.find(s => s.status === 'closed') || {}).count || 0;
+      document.getElementById('statClosed').textContent = closed;
+
+      // Recent table
+      const tbody = document.querySelector('#recentTable tbody');
+      tbody.innerHTML = data.recentCrimes.length ? data.recentCrimes.map(c => `
+        <tr onclick="window.location.href='/pages/crime-detail.html?id=${c.id}'">
+          <td class="mono">${escapeHtml(c.case_number)}</td>
+          <td>${escapeHtml(c.crime_type)}</td>
+          <td>${stampHtml(c.status)}</td>
+        </tr>`).join('') : `<tr><td colspan="3" class="text-center text-muted py-3">No records yet</td></tr>`;
+
+      // Monthly chart
+      new Chart(document.getElementById('monthlyChart'), {
+        type: 'line',
+        data: {
+          labels: data.monthly.map(m => m.month),
+          datasets: [{ label: 'Crimes reported', data: data.monthly.map(m => m.count), borderColor: '#0B2545', backgroundColor: 'rgba(11,37,69,0.08)', fill: true, tension: 0.3 }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+
+      // Status chart
+      new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+          labels: data.byStatus.map(s => s.status.replace('_',' ')),
+          datasets: [{ data: data.byStatus.map(s => s.count), backgroundColor: ['#8C2F2F','#B8901F','#0F5132','#0B2545'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+      });
+
+      // Type chart
+      new Chart(document.getElementById('typeChart'), {
+        type: 'bar',
+        data: {
+          labels: data.byType.map(t => t.crime_type),
+          datasets: [{ label: 'Cases', data: data.byType.map(t => t.count), backgroundColor: '#B8901F' }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+
+    } catch (err) {
+      showToast(err.message, 'danger');
+    }
+  })();
+}
+</script>
+</body>
+</html>

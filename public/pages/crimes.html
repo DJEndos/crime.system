@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crime Records — Crime Tracking System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/style.css" rel="stylesheet">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-root"></div>
+  <div class="main-content">
+    <div id="topbar-root"></div>
+    <div class="page-body">
+
+      <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+          <select class="form-select form-select-sm" id="filterStatus" style="width:auto;">
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="under_investigation">Under investigation</option>
+            <option value="in_court">In court</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <button class="btn btn-gold btn-sm" data-bs-toggle="modal" data-bs-target="#newCrimeModal">+ Register New Crime</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Crime Registration Records</div>
+        <table class="records mb-0">
+          <thead><tr><th>Case #</th><th>Type</th><th>Location</th><th>Reported</th><th>Victim</th><th>Status</th><th>Suspects</th></tr></thead>
+          <tbody id="crimesBody"><tr><td colspan="7" class="text-center text-muted py-4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- New Crime Modal -->
+<div class="modal fade" id="newCrimeModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="newCrimeForm">
+        <div class="modal-header">
+          <h5 class="modal-title display-font">Register New Crime</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Crime type</label>
+              <input type="text" class="form-control" id="crime_type" placeholder="e.g. Burglary, Assault, Theft" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-control" id="location" placeholder="e.g. Marina Road, Eket">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date occurred</label>
+              <input type="date" class="form-control" id="date_occurred">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date reported</label>
+              <input type="date" class="form-control" id="date_reported" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Victim name</label>
+              <input type="text" class="form-control" id="victim_name">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Victim gender</label>
+              <select class="form-select" id="victim_gender">
+                <option value="unknown">Unknown</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Victim phone</label>
+              <input type="text" class="form-control" id="victim_phone">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" id="description" rows="3" placeholder="Narrative of the incident"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Assign officer</label>
+              <select class="form-select" id="assigned_officer_id"><option value="">— Unassigned —</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-navy">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let modalInstance;
+
+if (requireAuth()) {
+  renderSidebar('/pages/crimes.html');
+  renderTopbar('Crime Records');
+
+  loadCrimes();
+  loadOfficers();
+
+  document.getElementById('filterStatus').addEventListener('change', loadCrimes);
+
+  document.getElementById('newCrimeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await apiRequest('/crimes', { method: 'POST', body: {
+        crime_type: document.getElementById('crime_type').value,
+        location: document.getElementById('location').value,
+        date_occurred: document.getElementById('date_occurred').value || null,
+        date_reported: document.getElementById('date_reported').value,
+        victim_name: document.getElementById('victim_name').value,
+        victim_gender: document.getElementById('victim_gender').value,
+        victim_phone: document.getElementById('victim_phone').value,
+        description: document.getElementById('description').value,
+        assigned_officer_id: document.getElementById('assigned_officer_id').value || null
+      }});
+      bootstrap.Modal.getInstance(document.getElementById('newCrimeModal')).hide();
+      document.getElementById('newCrimeForm').reset();
+      showToast('Crime record registered successfully.');
+      loadCrimes();
+    } catch (err) { showToast(err.message, 'danger'); }
+  });
+}
+
+async function loadCrimes() {
+  const status = document.getElementById('filterStatus').value;
+  const tbody = document.getElementById('crimesBody');
+  try {
+    const data = await apiRequest(`/crimes${status ? `?status=${status}` : ''}`);
+    tbody.innerHTML = data.crimes.length ? data.crimes.map(c => `
+      <tr onclick="window.location.href='/pages/crime-detail.html?id=${c.id}'">
+        <td class="mono">${escapeHtml(c.case_number)}</td>
+        <td>${escapeHtml(c.crime_type)}</td>
+        <td>${escapeHtml(c.location || '—')}</td>
+        <td>${formatDate(c.date_reported)}</td>
+        <td>${escapeHtml(c.victim_name || '—')}</td>
+        <td>${stampHtml(c.status)}</td>
+        <td>${c.suspect_count}</td>
+      </tr>`).join('') : `<tr><td colspan="7" class="empty-state">No crime records match this filter.</td></tr>`;
+  } catch (err) { showToast(err.message, 'danger'); }
+}
+
+async function loadOfficers() {
+  try {
+    const data = await apiRequest('/auth/officers');
+    const sel = document.getElementById('assigned_officer_id');
+    data.officers.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = `${o.full_name} (${o.badge_number})`;
+      sel.appendChild(opt);
+    });
+  } catch (err) { /* non-blocking */ }
+}
+</script>
+</body>
+</html>
