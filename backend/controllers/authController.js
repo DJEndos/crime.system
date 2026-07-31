@@ -58,6 +58,7 @@ async function me(req, res) {
 }
 
 // POST /api/auth/register  (admin only — creates IPO / DCO / admin accounts)
+// POST /api/auth/register  (admin only — creates IPO / DCO / admin accounts)
 async function register(req, res) {
   const { full_name, username, password, role, badge_number, officer_rank, phone, station } = req.body;
   if (!full_name || !username || !password || !role || !badge_number) {
@@ -74,13 +75,15 @@ async function register(req, res) {
     });
     await logAction({ userId: req.user.id, action: 'CREATE_USER', entityType: 'user', entityId: newUser._id, ip: req.ip });
     res.status(201).json({ success: true, message: 'Officer account created.', userId: newUser._id });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({ success: false, message: 'Username or badge number already exists.' });
+  } catch (err) {                                                                   // <-- keep this line as-is
+    if (err.code === 11000) {                                                       // <-- REPLACE from here...
+      console.error('Duplicate key error on register:', err.keyValue);
+      const field = Object.keys(err.keyValue || {})[0] || 'field';
+      return res.status(409).json({ success: false, message: `That ${field.replace('_', ' ')} is already in use.` });
     }
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error creating account.' });
-  }
+  }                                                                                  // <-- ...to here
 }
 
 // PUT /api/auth/change-password
