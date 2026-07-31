@@ -1,7 +1,5 @@
-// =====================================================================
-// Shared front-end helpers for the Crime Tracking System
-// =====================================================================
-const API_BASE = '/api';
+
+const API_BASE = 'https://crime-system-b3g8.onrender.com/api';
 
 function getToken() { return localStorage.getItem('ctis_token'); }
 function getUser() {
